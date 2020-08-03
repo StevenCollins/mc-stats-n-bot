@@ -1,9 +1,14 @@
+#!/usr/bin/env python3
+
 import os
 import time
 import subprocess
 import re
 
+import threading
+
 import mcrcon
+from discord.ext import commands
 
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_SSD1306
@@ -19,6 +24,22 @@ load_dotenv()
 # Connect with RCON
 rcon = mcrcon.MCRcon()
 rcon.connect("localhost", 25575, os.getenv("RCON_PASSWORD"), False)
+
+# Initialize Discord bot
+bot = commands.Bot(command_prefix="!")
+
+# Define Discord commands
+@bot.command(name="hello")
+async def hello(ctx):
+    await ctx.send("Hi! 🐇")
+@bot.command(name="tps")
+async def tps(ctx):
+    await ctx.send(rcon.command("tps") + " 🐇")
+@bot.command(name="list")
+async def list(ctx):
+    await ctx.send(rcon.command("list") + " 🐇")
+
+# bot.run(os.getenv("DISCORD_TOKEN"))
 
 # Initialize 128x64 display
 disp = Adafruit_SSD1306.SSD1306_128_64(rst=None)
@@ -40,15 +61,15 @@ font = ImageFont.truetype('Minecraftia.ttf', 8)
 # Initialize TPS data list
 TPSData = [0.0] * 128
 
-# Pixel shifting variables
-yMaxMovement = 15 # How many pixels to move
-yTimePerMovement = 60 # How long to wait between movements (in updates, about 1s)
-yDirection = True # Which direction we're changing the counter (True is increasing)
-yCounter = 0 # The counter
-
 # Screen update loop
-try:
-    while True:
+def updateScreen(running):
+    # Pixel shifting variables
+    yMaxMovement = 15 # How many pixels to move
+    yTimePerMovement = 60 # How long to wait between movements (in updates, about 1s)
+    yDirection = True # Which direction we're changing the counter (True is increasing)
+    yCounter = 0 # The counter
+
+    while running:
         # Clear the image
         draw.rectangle((0,0,width,height), outline=0, fill=0)
 
@@ -115,7 +136,20 @@ try:
         if yCounter > yMaxMovement * yTimePerMovement or yCounter <= 0:
             yDirection = not yDirection
 
+try:
+    running = threading.Semaphore()
+    running.acquire()
+
+    thread = threading.Thread(target=updateScreen, args=(running,))
+    thread.start()
+
+    bot.run(os.getenv("DISCORD_TOKEN"))
+
+
 except KeyboardInterrupt:
+    running.release()
+
+finally:
     rcon.disconnect()
     disp.clear()
     disp.display()
