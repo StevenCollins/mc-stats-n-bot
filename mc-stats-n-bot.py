@@ -1,3 +1,4 @@
+import os
 import time
 import subprocess
 import re
@@ -11,9 +12,13 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 
+# Get env vars
+from dotenv import load_dotenv
+load_dotenv()
+
 # Connect with RCON
 rcon = mcrcon.MCRcon()
-rcon.connect("localhost", 25575, "Dkt5zcwVjv76cLF6DV2H", False)
+rcon.connect("localhost", 25575, os.getenv("RCON_PASSWORD"), False)
 
 # Initialize 128x64 display
 disp = Adafruit_SSD1306.SSD1306_128_64(rst=None)
