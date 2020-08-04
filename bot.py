@@ -58,6 +58,8 @@ async def on_message(message):
             await message.channel.send(getListString())
         if "time" in message.content.lower() or "morning" in message.content.lower():
             await message.channel.send(getTimeString())
+    elif any(word in message.content.lower() for word in ["owo", "uwu"]):
+        await message.channel.send("*nuzzles you*")
 
     await bot.process_commands(message)
 
