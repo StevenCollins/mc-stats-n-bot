@@ -22,6 +22,8 @@ def getTPSString():
     return f"The current TPS is {float(TPSList[0]):.2f}. Last 5 minutes, {float(TPSList[1]):.2f}. Last 20 minutes, {float(TPSList[2]):.2f}. 🐇"
 def getListString():
     return rcon.command("list") + " 🐇"
+def getTimeString():
+    return rcon.command("time query daytime") + ". (Day is from 0 to 12000) 🐇"
 
 # Initialize Discord bot
 bot = commands.Bot(command_prefix="!")
@@ -39,6 +41,10 @@ async def tps(ctx):
 @bot.command(name="list")
 async def list(ctx):
     await ctx.send(getListString())
+@bot.command(name="time")
+async def list(ctx):
+    await ctx.send(getTimeString())
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -50,6 +56,8 @@ async def on_message(message):
             await message.channel.send(getTPSString())
         if "list" in message.content.lower() or "play" in message.content.lower():
             await message.channel.send(getListString())
+        if "time" in message.content.lower() or "morning" in message.content.lower():
+            await message.channel.send(getTimeString())
 
     await bot.process_commands(message)
 
