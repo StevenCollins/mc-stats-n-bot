@@ -7,8 +7,9 @@ import re
 
 import mcrcon
 
-import Adafruit_GPIO.SPI as SPI
-import Adafruit_SSD1306
+from board import SCL, SDA
+import busio
+import adafruit_ssd1306
 
 from PIL import Image
 from PIL import ImageDraw
@@ -23,11 +24,11 @@ rcon = mcrcon.MCRcon()
 rcon.connect("localhost", 25575, os.getenv("RCON_PASSWORD"), False)
 
 # Initialize 128x64 display
-disp = Adafruit_SSD1306.SSD1306_128_64(rst=None)
-disp.begin()
-disp.clear()
-disp.display()
-disp.set_contrast(32)
+i2c = busio.I2C(SCL, SDA)
+disp = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
+disp.fill(0)
+disp.show()
+disp.contrast(32)
 
 # Create blank image as canvas and drawing object
 width = disp.width
@@ -109,7 +110,7 @@ def updateScreen():
 
         # Display image
         disp.image(image)
-        disp.display()
+        disp.show()
         # time.sleep(.1)
 
         # Shift image over time
@@ -126,5 +127,5 @@ except KeyboardInterrupt:
 
 finally:
     rcon.disconnect()
-    disp.clear()
-    disp.display()
+    disp.fill(0)
+    disp.show()
