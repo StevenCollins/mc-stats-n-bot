@@ -13,7 +13,7 @@ load_dotenv()
 
 # Connect with RCON
 rcon = mcrcon.MCRcon()
-rcon.connect(os.getenv("HOST"), os.getenv("PORT"), os.getenv("RCON_PASSWORD"), False)
+rcon.connect(os.getenv("HOST"), int(os.getenv("PORT")), os.getenv("RCON_PASSWORD"), False)
 
 # Response string functions
 def getTPSString():
