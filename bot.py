@@ -24,6 +24,10 @@ def getListString():
     return rcon.command("list") + " 🐇"
 def getTimeString():
     return rcon.command("time query daytime") + ". (Day is from 0 to 12000) 🐇"
+def getVersionString():
+    versionCmd = rcon.command("version")
+    versionLines = re.search(r"^§.(.*)§r$", versionCmd, re.MULTILINE).groups()
+    return f"{versionLines[0]} 🐇"
 
 # Initialize Discord bot
 bot = commands.Bot(command_prefix="!")
@@ -44,6 +48,9 @@ async def list(ctx):
 @bot.command(name="time")
 async def list(ctx):
     await ctx.send(getTimeString())
+@bot.command(name="version")
+async def list(ctx):
+    await ctx.send(getVersionString())
 
 @bot.event
 async def on_message(message):
@@ -58,6 +65,8 @@ async def on_message(message):
             await message.channel.send(getListString())
         if "time" in message.content.lower() or "morning" in message.content.lower():
             await message.channel.send(getTimeString())
+        if "version" in message.content.lower() or "1." in message.content.lower():
+            await message.channel.send(getVersionString())
     elif any(word in message.content.lower() for word in ["owo", "uwu"]):
         await message.channel.send("*nuzzles you*")
 
