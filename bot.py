@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 
 import mcrcon
 import discord
@@ -25,8 +26,14 @@ def getListString():
 def getTimeString():
     return rcon.command("time query daytime") + ". (Day is from 0 to 12000) 🐇"
 def getVersionString():
-    versionCmd = rcon.command("version")
-    versionLines = re.search(r"^§.(.*)§r$", versionCmd, re.MULTILINE).groups()
+    versionLines = []
+    while len(versionLines) == 0:
+      versionCmd = rcon.command("version")
+      versionSearch = re.search(r"^§.(.*)§r$", versionCmd, re.MULTILINE)
+      if hasattr(versionSearch, "groups"):
+        versionLines = versionSearch.groups()
+      else:
+        time.sleep(0.5)
     return f"{versionLines[0]} 🐇"
 
 # Initialize Discord bot
