@@ -3,29 +3,45 @@
 import os
 import re
 import time
+import json
+import datetime
+import uuid
 
 import mcrcon
-import discord
-from discord.ext import commands
+import discord #library is "discord.py"
+from discord.ext import commands, tasks
 
 # Get env vars
-from dotenv import load_dotenv
+from dotenv import load_dotenv #library is "python-dotenv"
 load_dotenv()
 
 # Connect with RCON
+rconConnected = False
 rcon = mcrcon.MCRcon()
-rcon.connect(os.getenv("HOST"), int(os.getenv("PORT")), os.getenv("RCON_PASSWORD"), False)
+try:
+    rcon.connect(os.getenv("HOST"), int(os.getenv("PORT")), os.getenv("RCON_PASSWORD"), False)
+    rconConnected = True
+except ConnectionRefusedError:
+    pass
 
 # Response string functions
 def getTPSString():
+    if not rconConnected:
+        return "I'm not playing Minecraft right now 🐇"
     TPSCmd = rcon.command("tps")
     TPSList = re.search(r".*?(\d{1,2}\.\d{1,2}).*?(\d{1,2}\.\d{1,2}).*?(\d{1,2}\.\d{1,2})", TPSCmd).groups()
     return f"The current TPS is {float(TPSList[0]):.2f}. Last 5 minutes, {float(TPSList[1]):.2f}. Last 20 minutes, {float(TPSList[2]):.2f}. 🐇"
 def getListString():
+    if not rconConnected:
+        return "I'm not playing Minecraft right now 🐇"
     return rcon.command("list") + " 🐇"
 def getTimeString():
+    if not rconConnected:
+        return "I'm not playing Minecraft right now 🐇"
     return rcon.command("time query daytime") + ". (Day is from 0 to 12000) 🐇"
 def getVersionString():
+    if not rconConnected:
+        return "I'm not playing Minecraft right now 🐇"
     versionLines = []
     while len(versionLines) == 0:
       versionCmd = rcon.command("version")
@@ -37,10 +53,69 @@ def getVersionString():
     return f"{versionLines[0]} 🐇"
 
 # Initialize Discord bot
-bot = commands.Bot(command_prefix="!")
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Game(name="Minecraft"))
+    if rconConnected:
+        await bot.change_presence(activity=discord.Game(name="Minecraft"))
+    else:
+        await bot.change_presence(activity=None)
+    reminders_task.start()
+
+# Reminders background task
+@tasks.loop(seconds=60)
+async def reminders_task():
+    with open("reminders.json", "r") as remindersFile:
+        reminders = json.load(remindersFile)
+    hasChanged = False
+    for reminder in reminders:
+        if datetime.datetime.fromisoformat(reminder["time"]) < datetime.datetime.now():
+            reminder["time"] = (datetime.datetime.now() + datetime.timedelta(days=int(reminder["interval"]))).isoformat()
+            hasChanged = True
+            channel = bot.get_channel(reminder["channel"])
+            await channel.send(reminder["message"])
+    if hasChanged:
+        with open("reminders.json", "w") as remindersFile:
+            json.dump(reminders, remindersFile)
+
+# Add reminder
+def add_reminder(ctx):
+    with open("reminders.json", "r") as remindersFile:
+        reminders = json.load(remindersFile)
+    content = ctx.message.content.split()
+    reminders.append({
+        "uuid": str(uuid.uuid4()),
+        "channel": ctx.channel.id,
+        "time": (datetime.datetime.now() + datetime.timedelta(days=int(content[1]))).isoformat(),
+        "interval": content[1],
+        "message": " ".join(content[2:])
+    })
+    with open("reminders.json", "w") as remindersFile:
+        json.dump(reminders, remindersFile)
+
+# Remove reminder
+def remove_reminder(ctx):
+    with open("reminders.json", "r") as remindersFile:
+        reminders = json.load(remindersFile)
+    content = ctx.message.content.split()
+    length = len(reminders)
+    reminders[:] = [reminder for reminder in reminders if reminder.get('uuid') != content[1]]
+    length_changed = length != len(reminders)
+    with open("reminders.json", "w") as remindersFile:
+        json.dump(reminders, remindersFile)
+    return length_changed
+
+# List reminders
+async def list_reminders(ctx):
+    with open("reminders.json", "r") as remindersFile:
+        reminders = json.load(remindersFile)
+    if len(reminders) == 0:
+        await ctx.send("No reminders set 🐇")
+    else:
+        for reminder in reminders:
+            await ctx.send(reminder["uuid"] + ": " + reminder["message"])
 
 # Define Discord commands
 @bot.command(name="hello")
@@ -53,11 +128,24 @@ async def tps(ctx):
 async def list(ctx):
     await ctx.send(getListString())
 @bot.command(name="time")
-async def list(ctx):
+async def mctime(ctx):
     await ctx.send(getTimeString())
 @bot.command(name="version")
-async def list(ctx):
+async def version(ctx):
     await ctx.send(getVersionString())
+@bot.command(name="remind")
+async def reminder(ctx):
+    add_reminder(ctx)
+    await ctx.send("Got it! 🐇")
+@bot.command(name="forget")
+async def forget(ctx):
+    if remove_reminder(ctx):
+        await ctx.send("Forgot it! 🐇")
+    else:
+        await ctx.send("Huh? 🐇")
+@bot.command(name="remindlist")
+async def reminder_list(ctx):
+    await list_reminders(ctx)
 
 @bot.event
 async def on_message(message):
@@ -74,6 +162,8 @@ async def on_message(message):
             await message.channel.send(getTimeString())
         if "version" in message.content.lower() or "1." in message.content.lower():
             await message.channel.send(getVersionString())
+        if "reminders" in message.content.lower() in message.content.lower():
+            await list_reminders(message.channel)
     if any(word in message.content.lower() for word in ["owo", "uwu"]):
         await message.channel.send("*nuzzles you*")
 
@@ -81,10 +171,15 @@ async def on_message(message):
 
 # Application flow
 try:
+    # Create the reminders.json file if it doesn't already exist
+    if not os.path.exists("reminders.json"):
+        with open("reminders.json", "+w") as remindersFile:
+            json.dump([], remindersFile)
+    # Run the bot!
     bot.run(os.getenv("DISCORD_TOKEN"))
 
 except KeyboardInterrupt:
     pass
 
 finally:
-    rcon.disconnect()
+        rcon.disconnect()
