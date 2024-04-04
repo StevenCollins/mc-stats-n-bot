@@ -15,6 +15,9 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv #library is "python-dotenv"
 load_dotenv()
 
+# Initialize emoji map array
+emojiNumber = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"]
+
 # Connect with RCON
 rconConnected = False
 rcon = mcrcon.MCRcon()
@@ -111,11 +114,18 @@ def remove_reminder(ctx):
 async def list_reminders(ctx):
     with open("reminders.json", "r") as remindersFile:
         reminders = json.load(remindersFile)
-    if len(reminders) == 0:
+    channelReminders = [reminder for reminder in reminders if reminder["channel"] == ctx.channel.id]
+    if len(channelReminders) == 0:
         await ctx.send("No reminders set 🐇")
     else:
-        for reminder in reminders:
-            await ctx.send(reminder["uuid"] + ": " + reminder["message"])
+        message = ""
+        for (i, reminder) in enumerate(channelReminders):
+            if reminder["channel"] == ctx.channel.id:
+                if i < 10:
+                    message += emojiNumber[i] + " " + reminder["time"][:19] + " " + reminder["message"] + "\n"
+                else:
+                    message += reminder["uuid"] + ": " + reminder["time"][:19] + " " + reminder["message"] + "\n"
+        await ctx.send(message)
 
 # Define Discord commands
 @bot.command(name="hello")
