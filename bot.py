@@ -79,6 +79,8 @@ async def reminders_task():
             reminder["time"] = (datetime.datetime.now() + datetime.timedelta(days=int(reminder["interval"]))).isoformat()
             hasChanged = True
             channel = bot.get_channel(reminder["channel"])
+            if not channel:
+                channel = await bot.fetch_user(reminder["user"])
             await channel.send(reminder["message"])
     if hasChanged:
         with open("reminders.json", "w") as remindersFile:
@@ -92,6 +94,7 @@ def add_reminder(ctx):
     reminders.append({
         "uuid": str(uuid.uuid4()),
         "channel": ctx.channel.id,
+        "user": ctx.author.id,
         "time": (datetime.datetime.now() + datetime.timedelta(days=int(content[1]))).isoformat(),
         "interval": content[1],
         "message": " ".join(content[2:])
