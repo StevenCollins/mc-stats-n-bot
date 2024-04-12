@@ -16,7 +16,8 @@ from dotenv import load_dotenv #library is "python-dotenv"
 load_dotenv()
 
 # Initialize emoji map array
-emojiNumber = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"]
+emojiNumber = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔢"]
+regexPattern = r"^([0️⃣,1️⃣,2️⃣,3️⃣,4️⃣,5️⃣,6️⃣,7️⃣,8️⃣,9️⃣]).*\|\|(.*)\|\|$"
 
 # Connect with RCON
 rconConnected = False
@@ -99,12 +100,11 @@ def add_reminder(ctx):
         json.dump(reminders, remindersFile)
 
 # Remove reminder
-def remove_reminder(ctx):
+def remove_reminder(uuid):
     with open("reminders.json", "r") as remindersFile:
         reminders = json.load(remindersFile)
-    content = ctx.message.content.split()
     length = len(reminders)
-    reminders[:] = [reminder for reminder in reminders if reminder.get('uuid') != content[1]]
+    reminders[:] = [reminder for reminder in reminders if reminder.get('uuid') != uuid]
     length_changed = length != len(reminders)
     with open("reminders.json", "w") as remindersFile:
         json.dump(reminders, remindersFile)
@@ -118,14 +118,35 @@ async def list_reminders(ctx):
     if len(channelReminders) == 0:
         await ctx.send("No reminders set 🐇")
     else:
-        message = ""
+        message = "I'm keeping track of these reminders:\n"
         for (i, reminder) in enumerate(channelReminders):
             if reminder["channel"] == ctx.channel.id:
-                if i < 10:
-                    message += emojiNumber[i] + " " + reminder["time"][:19] + " " + reminder["message"] + "\n"
-                else:
-                    message += reminder["uuid"] + ": " + reminder["time"][:19] + " " + reminder["message"] + "\n"
+                if i > 10: i = 10
+                message += emojiNumber[i] + " " + reminder["time"][:16].replace("T", " ") + " " + reminder["message"] + " ||" + reminder["uuid"] + "||\n"
+        message += "Respond with an emoji to erase that message 🐇\n"
         await ctx.send(message)
+
+# Remove events via "List reminders" message
+@bot.event
+async def on_raw_reaction_add(payload):
+    # Stop here if it's not an emoji we care about
+    if payload.emoji.name not in emojiNumber[:-1]:
+        return
+    # Get the message
+    channel = bot.get_channel(payload.channel_id)
+    if not channel:
+        channel = await bot.fetch_user(payload.user_id)
+    message = await channel.fetch_message(payload.message_id)
+    # Stop here if this message isn't from the bot or valid
+    if message.author.id != bot.user.id or not message.content.startswith("I'm keeping track of these reminders:"):
+        return
+    # Parse the message, determine the correct reminder, and remove it
+    reminders = re.findall(regexPattern, message.content, re.M)
+    index = emojiNumber.index(payload.emoji.name)
+    if index < len(reminders) and remove_reminder(reminders[index][1]):
+        await channel.send("Forgot reminder " + payload.emoji.name + "! 🐇")
+    else:
+        await channel.send("Huh? 🐇")
 
 # Define Discord commands
 @bot.command(name="hello")
@@ -149,7 +170,7 @@ async def reminder(ctx):
     await ctx.send("Got it! 🐇")
 @bot.command(name="forget")
 async def forget(ctx):
-    if remove_reminder(ctx):
+    if remove_reminder(ctx.message.content.split()[1]):
         await ctx.send("Forgot it! 🐇")
     else:
         await ctx.send("Huh? 🐇")
