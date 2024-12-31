@@ -180,6 +180,9 @@ async def forget(ctx):
 @bot.command(name="remindlist")
 async def reminder_list(ctx):
     await list_reminders(ctx)
+@bot.command(name="help")
+async def help(ctx):
+    await ctx.send("To set a reminder, type `!remind [number of days from now] [your message]`\nLike `!remind 7 give the bun a treat!`! 🐇")
 
 @bot.event
 async def on_message(message):
