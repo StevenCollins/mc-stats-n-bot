@@ -155,34 +155,31 @@ async def on_raw_reaction_add(payload):
 @bot.command(name="hello")
 async def hello(ctx):
     await ctx.send("Hi! 🐇")
-@bot.command(name="tps")
+@bot.command(name="tps", brief="Check how well the Minecraft server is running")
 async def tps(ctx):
     await ctx.send(getTPSString())
-@bot.command(name="list")
+@bot.command(name="list", brief="List who's on the Minecraft server")
 async def list(ctx):
     await ctx.send(getListString())
-@bot.command(name="time")
+@bot.command(name="time", brief="Find out what time it is on the Minecraft server")
 async def mctime(ctx):
     await ctx.send(getTimeString())
-@bot.command(name="version")
+@bot.command(name="version", brief="See the current Minecraft server version")
 async def version(ctx):
     await ctx.send(getVersionString())
-@bot.command(name="remind")
+@bot.command(name="remind", brief="Set a reminder", description="To set a reminder, type `!remind [number of days from now] [your message]`\nLike `!remind 7 give the bun a treat!`! 🐇")
 async def reminder(ctx):
     add_reminder(ctx)
     await ctx.send("Got it! 🐇")
-@bot.command(name="forget")
+@bot.command(name="forget", brief="Forget a reminder")
 async def forget(ctx):
     if remove_reminder(ctx.message.content.split()[1]):
         await ctx.send("Forgot it! 🐇")
     else:
         await ctx.send("Huh? 🐇")
-@bot.command(name="remindlist")
+@bot.command(name="remindlist", brief="List all reminders")
 async def reminder_list(ctx):
     await list_reminders(ctx)
-@bot.command(name="help")
-async def help(ctx):
-    await ctx.send("To set a reminder, type `!remind [number of days from now] [your message]`\nLike `!remind 7 give the bun a treat!`! 🐇")
 
 @bot.event
 async def on_message(message):
