@@ -56,10 +56,15 @@ def getVersionString():
         time.sleep(0.5)
     return f"{versionLines[0]} 🐇"
 
+# Set the no_category text to make the bot help look nice
+help_command = commands.DefaultHelpCommand(
+    no_category = 'Commands'
+)
+
 # Initialize Discord bot
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=help_command)
 @bot.event
 async def on_ready():
     if rconConnected:
@@ -152,7 +157,7 @@ async def on_raw_reaction_add(payload):
         await channel.send("Huh? 🐇")
 
 # Define Discord commands
-@bot.command(name="hello")
+@bot.command(name="hello", hidden=True)
 async def hello(ctx):
     await ctx.send("Hi! 🐇")
 @bot.command(name="tps", brief="Check how well the Minecraft server is running")
